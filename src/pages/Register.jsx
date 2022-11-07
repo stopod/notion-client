@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { Box, Button, TextField } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import authApi from '../api/authApi';
 
 const Register = () => {
+  const navigate = useNavigate();
+
   const [usernameErrText, setUsernameErrText] = useState('');
   const [passwordErrText, setPasswordErrText] = useState('');
   const [confirmPasswordErrText, setConfirmPasswordErrText] = useState('');
+  const [loading, setLoading] = useState(false);
 
 
   const handleSubmit = async (e) => {
@@ -41,11 +44,13 @@ const Register = () => {
 
     if (password !== confirmPassword) {
       isError = true;
-      setPasswordErrText('パスワードと確認用パスワードが異なります');
+      setConfirmPasswordErrText('パスワードと確認用パスワードが異なります');
     }
 
     if (isError) return;
     
+    setLoading(true);
+
     // 新規登録APIを叩く
     try {
       const res = await authApi.register({
@@ -53,11 +58,28 @@ const Register = () => {
         password,
         confirmPassword,
       });
+
+      setLoading(false);
   
       localStorage.setItem('token', res.token);
       console.log('新規登録に成功');
-    } catch (error) {
-      console.log(error);
+      navigate('/');
+    } catch (err) {
+      console.log(err);
+      const errors = err.response.data.errors;
+      errors.forEach((err) => {
+        if (err.param === 'username') {
+          setUsernameErrText(err.msg);
+        };
+        if (err.param === 'password') {
+          setPasswordErrText(err.msg);
+        };
+        if (err.param === 'confirmPassword') {
+          setConfirmPasswordErrText(err.msg);
+        };
+      })
+
+      setLoading(false);
     }
   };
 
@@ -72,6 +94,8 @@ const Register = () => {
           name='username'
           required
           helperText={usernameErrText}
+          error={usernameErrText !== ''}
+          disabled={loading}
         />
         <TextField
           fullWidth
@@ -82,6 +106,8 @@ const Register = () => {
           type='password'
           required
           helperText={passwordErrText}
+          error={passwordErrText !== ''}
+          disabled={loading}
         />
         <TextField
           fullWidth
@@ -92,12 +118,14 @@ const Register = () => {
           type='password'
           required
           helperText={confirmPasswordErrText}
+          error={confirmPasswordErrText !== ''}
+          disabled={loading}
         />
         <LoadingButton
           sx={{ mt: 3, mb: 2 }}
           fullWidth
           type='submit'
-          loading={false}
+          loading={loading}
           color='primary'
           variant='outlined'
         >
